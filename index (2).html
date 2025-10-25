@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健康助手 - 林思成</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- Tailwind 配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1677ff',
+            secondary: '#36d399',
+            neutral: '#f3f4f6',
+            dark: '#1f2937'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .tab-active {
+        @apply text-primary;
+      }
+      .tab-inactive {
+        @apply text-gray-500;
+      }
+      .card-shadow {
+        @apply shadow-md rounded-lg transition-all duration-300 hover:shadow-lg;
+      }
+      .btn-effect {
+        @apply transform transition-transform active:scale-95;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans text-dark min-h-screen flex flex-col">
+  <!-- 主内容区域 -->
+  <main class="flex-1 overflow-y-auto p-4 md:p-6 max-w-4xl mx-auto w-full">
+    <!-- 看病模块 -->
+    <div id="medical-tab" class="tab-content hidden">
+      <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-center mb-6">健康咨询</h2>
+      
+      <div class="bg-white rounded-xl p-5 card-shadow mb-6">
+        <textarea id="symptom-input" placeholder="请描述你的症状..." 
+                  class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none h-32"></textarea>
+        
+        <button id="check-symptom" class="mt-4 bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-all w-full flex items-center justify-center gap-2 btn-effect">
+          <i class="fa fa-search"></i>
+          <span>查看建议</span>
+        </button>
+      </div>
+      
+      <div id="medical-result" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-lg font-semibold">诊断建议</h3>
+          <span id="medical-timestamp" class="text-sm text-gray-500"></span>
+        </div>
+        <div class="overflow-x-auto bg-white rounded-xl card-shadow">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gray-50 border-b">
+                <th class="py-3 px-4 text-left">药物名字</th>
+                <th class="py-3 px-4 text-left">每次吃的数量</th>
+                <th class="py-3 px-4 text-left">次数</th>
+                <th class="py-3 px-4 text-left">症状原因</th>
+              </tr>
+            </thead>
+            <tbody id="medical-table-body">
+              <!-- 结果将通过JS插入 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 饮食模块 -->
+    <div id="diet-tab" class="tab-content hidden">
+      <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-center mb-6">饮食建议</h2>
+      
+      <div class="bg-white rounded-xl p-5 card-shadow mb-6 space-y-5">
+        <div>
+          <label class="block text-gray-700 mb-2">选择目的</label>
+          <select id="diet-goal" class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
+            <option value="">请选择...</option>
+            <option value="减肥">减肥</option>
+            <option value="长高">长高</option>
+            <option value="变胖">变胖</option>
+            <option value="健身">健身</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-2">年龄</label>
+          <input type="number" id="age-input" placeholder="请输入年龄" 
+                 class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 mb-2">是否有食物过敏</label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2">
+              <input type="radio" name="allergy" value="是" class="text-primary focus:ring-primary">
+              <span>是</span>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" name="allergy" value="否" class="text-primary focus:ring-primary" checked>
+              <span>否</span>
+            </label>
+          </div>
+          <input type="text" id="allergy-details" placeholder="如有过敏，请说明过敏原" 
+                 class="w-full p-3 mt-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all hidden">
+        </div>
+        
+        <button id="generate-diet" class="mt-4 bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-all w-full flex items-center justify-center gap-2 btn-effect">
+          <i class="fa fa-cutlery"></i>
+          <span>生成饮食计划</span>
+        </button>
+      </div>
+      
+      <div id="diet-result" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-lg font-semibold">每日饮食计划</h3>
+          <span id="diet-timestamp" class="text-sm text-gray-500"></span>
+        </div>
+        <div class="overflow-x-auto bg-white rounded-xl card-shadow">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gray-50 border-b">
+                <th class="py-3 px-4 text-left">时段</th>
+                <th class="py-3 px-4 text-left">推荐食物</th>
+                <th class="py-3 px-4 text-left">建议饭量</th>
+              </tr>
+            </thead>
+            <tbody id="diet-table-body">
+              <!-- 结果将通过JS插入 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 运动模块 -->
+    <div id="exercise-tab" class="tab-content hidden">
+      <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-center mb-6">运动记录</h2>
+      
+      <div class="bg-white rounded-xl p-5 card-shadow mb-6">
+        <div>
+          <label class="block text-gray-700 mb-2">选择运动类型</label>
+          <select id="exercise-type" class="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
+            <option value="">请选择...</option>
+            <option value="乒乓球">乒乓球</option>
+            <option value="羽毛球">羽毛球</option>
+            <option value="足球">足球</option>
+            <option value="篮球">篮球</option>
+            <option value="跑步">跑步</option>
+            <option value="散步">散步</option>
+          </select>
+        </div>
+        
+        <div class="mt-8 text-center">
+          <div id="timer-display" class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-4">00:00:00</div>
+          <div id="calories-display" class="text-lg text-gray-600 mb-6">消耗热量: 0.0 大卡</div>
+          
+          <div class="flex flex-wrap gap-4 justify-center">
+            <button id="start-exercise" class="bg-secondary text-white py-3 px-8 rounded-lg hover:bg-secondary/90 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed btn-effect" disabled>
+              <i class="fa fa-play"></i>
+              <span>开始</span>
+            </button>
+            <button id="stop-exercise" class="bg-gray-500 text-white py-3 px-8 rounded-lg hover:bg-gray-600 transition-all flex items-center gap-2 hidden btn-effect">
+              <i class="fa fa-stop"></i>
+              <span>结束</span>
+            </button>
+            <button id="save-exercise" class="bg-primary text-white py-3 px-8 rounded-lg hover:bg-primary/90 transition-all flex items-center gap-2 hidden btn-effect">
+              <i class="fa fa-save"></i>
+              <span>保存</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 运动历史记录 -->
+      <div id="exercise-history" class="hidden">
+        <h3 class="text-lg font-semibold mb-3">今日运动记录</h3>
+        <div class="bg-white rounded-xl card-shadow overflow-hidden">
+          <table class="w-full">
+            <thead>
+              <tr class="bg-gray-50 border-b">
+                <th class="py-3 px-4 text-left">运动类型</th>
+                <th class="py-3 px-4 text-left">时长</th>
+                <th class="py-3 px-4 text-left">消耗热量</th>
+                <th class="py-3 px-4 text-left">时间</th>
+              </tr>
+            </thead>
+            <tbody id="exercise-history-body">
+              <!-- 历史记录将通过JS插入 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 主页模块 -->
+    <div id="home-tab" class="tab-content">
+      <div class="text-center mb-8">
+        <div class="w-24 h-24 bg-primary text-white rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-3 shadow-lg">L</div>
+        <h2 class="text-2xl font-bold">lsc_happy</h2>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl card-shadow text-center transform transition-transform hover:scale-[1.02]">
+          <p class="text-gray-500 mb-1">今日消耗</p>
+          <p id="total-calories" class="text-2xl font-bold text-primary">0.0 大卡</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl card-shadow text-center transform transition-transform hover:scale-[1.02]">
+          <p class="text-gray-500 mb-1">运动时间</p>
+          <p id="total-time" class="text-2xl font-bold text-primary">0 分钟</p>
+        </div>
+      </div>
+      
+      <div class="bg-white p-5 rounded-xl card-shadow mb-6">
+        <h3 class="font-semibold mb-3">运动评估</h3>
+        <p id="exercise-evaluation" class="text-gray-700">
+          尚未记录运动数据
+        </p>
+      </div>
+      
+      <div class="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+        <p class="text-amber-800 text-sm">
+          <i class="fa fa-info-circle mr-2"></i>温馨提示：退出此应用所有记录将不会保存
+        </p>
+      </div>
+      
+      <div class="mt-8 text-center text-gray-500 text-sm">
+        <p>本应用作者：林思成</p>
+      </div>
+    </div>
+  </main>
+  
+  <!-- 底部导航 -->
+  <footer class="border-t bg-white py-2 px-4 md:px-6 sticky bottom-0 z-10">
+    <div class="flex justify-around max-w-4xl mx-auto">
+      <div class="tab-item flex flex-col items-center py-1 px-3 cursor-pointer" data-tab="medical-tab">
+        <i class="fa fa-medkit text-xl tab-inactive transition-colors"></i>
+        <span class="text-xs mt-1 tab-inactive transition-colors">看病</span>
+      </div>
+      <div class="tab-item flex flex-col items-center py-1 px-3 cursor-pointer" data-tab="diet-tab">
+        <i class="fa fa-cutlery text-xl tab-inactive transition-colors"></i>
+        <span class="text-xs mt-1 tab-inactive transition-colors">饮食</span>
+      </div>
+      <div class="tab-item flex flex-col items-center py-1 px-3 cursor-pointer" data-tab="exercise-tab">
+        <i class="fa fa-futbol-o text-xl tab-inactive transition-colors"></i>
+        <span class="text-xs mt-1 tab-inactive transition-colors">运动</span>
+      </div>
+      <div class="tab-item flex flex-col items-center py-1 px-3 cursor-pointer" data-tab="home-tab">
+        <i class="fa fa-home text-xl tab-active transition-colors"></i>
+        <span class="text-xs mt-1 tab-active transition-colors">主页</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // 全局变量
+    let timerInterval;
+    let seconds = 0;
+    let calories = 0;
+    let exerciseInProgress = false;
+    let totalCalories = 0;
+    let totalSeconds = 0;
+    let exerciseHistory = [];
+    
+    // DOM 元素
+    const tabItems = document.querySelectorAll('.tab-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const allergyRadios = document.querySelectorAll('input[name="allergy"]');
+    const allergyDetails = document.getElementById('allergy-details');
+    const exerciseType = document.getElementById('exercise-type');
+    const startExercise = document.getElementById('start-exercise');
+    const stopExercise = document.getElementById('stop-exercise');
+    const saveExercise = document.getElementById('save-exercise');
+    const timerDisplay = document.getElementById('timer-display');
+    const caloriesDisplay = document.getElementById('calories-display');
+    const totalCaloriesEl = document.getElementById('total-calories');
+    const totalTimeEl = document.getElementById('total-time');
+    const exerciseEvaluation = document.getElementById('exercise-evaluation');
+    const checkSymptomBtn = document.getElementById('check-symptom');
+    const generateDietBtn = document.getElementById('generate-diet');
+    const exerciseHistoryEl = document.getElementById('exercise-history');
+    const exerciseHistoryBody = document.getElementById('exercise-history-body');
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 检查本地存储中的运动数据
+      loadExerciseData();
+      
+      // 标签切换事件
+      tabItems.forEach(item => {
+        item.addEventListener('click', () => {
+          const tabId = item.getAttribute('data-tab');
+          
+          // 更新标签激活状态
+          tabItems.forEach(i => {
+            i.querySelector('i').classList.remove('tab-active');
+            i.querySelector('i').classList.add('tab-inactive');
+            i.querySelector('span').classList.remove('tab-active');
+            i.querySelector('span').classList.add('tab-inactive');
+          });
+          
+          item.querySelector('i').classList.remove('tab-inactive');
+          item.querySelector('i').classList.add('tab-active');
+          item.querySelector('span').classList.remove('tab-inactive');
+          item.querySelector('span').classList.add('tab-active');
+          
+          // 显示对应内容
+          tabContents.forEach(content => {
+            content.classList.add('hidden');
+          });
+          
+          document.getElementById(tabId).classList.remove('hidden');
+          
+          // 如果切换到运动标签，检查是否有历史记录
+          if (tabId === 'exercise-tab' && exerciseHistory.length > 0) {
+            exerciseHistoryEl.classList.remove('hidden');
+            renderExerciseHistory();
+          } else {
+            exerciseHistoryEl.classList.add('hidden');
+          }
+        });
+      });
+      
+      // 过敏选项切换
+      allergyRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          if (radio.value === '是') {
+            allergyDetails.classList.remove('hidden');
+          } else {
+            allergyDetails.classList.add('hidden');
+          }
+        });
+      });
+      
+      // 运动类型选择变化
+      exerciseType.addEventListener('change', () => {
+        startExercise.disabled = !exerciseType.value;
+      });
+      
+      // 开始运动
+      startExercise.addEventListener('click', startTimer);
+      
+      // 停止运动
+      stopExercise.addEventListener('click', stopTimer);
+      
+      // 保存运动
+      saveExercise.addEventListener('click', saveExerciseData);
+      
+      // 查看症状
+      checkSymptomBtn.addEventListener('click', getMedicalAdvice);
+      
+      // 生成饮食计划
+      generateDietBtn.addEventListener('click', getDietPlan);
+    });
+    
+    // 计时器格式化
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+    
+    // 格式化日期时间显示
+    function formatDateTime() {
+      const now = new Date();
+      return now.toLocaleString('zh-CN', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // 开始计时器
+    function startTimer() {
+      if (exerciseInProgress || !exerciseType.value) return;
+      
+      exerciseInProgress = true;
+      seconds = 0;
+      calories = 0;
+      
+      startExercise.classList.add('hidden');
+      stopExercise.classList.remove('hidden');
+      
+      timerInterval = setInterval(() => {
+        seconds++;
+        timerDisplay.textContent = formatTime(seconds);
+        
+        // 不同运动类型消耗热量不同
+        const exerciseFactor = {
+          '乒乓球': 0.25,
+          '羽毛球': 0.3,
+          '足球': 0.4,
+          '篮球': 0.35,
+          '跑步': 0.5,
+          '散步': 0.15
+        };
+        
+        // 每5秒增加对应热量
+        if (seconds % 5 === 0) {
+          calories += exerciseFactor[exerciseType.value] || 0.2;
+          caloriesDisplay.textContent = `消耗热量: ${calories.toFixed(1)} 大卡`;
+        }
+      }, 1000);
+    }
+    
+    // 停止计时器
+    function stopTimer() {
+      if (!exerciseInProgress) return;
+      
+      clearInterval(timerInterval);
+      exerciseInProgress = false;
+      
+      stopExercise.classList.add('hidden');
+      saveExercise.classList.remove('hidden');
+    }
+    
+    // 保存运动数据
+    function saveExerciseData() {
+      if (seconds === 0) return;
+      
+      // 更新总数据
+      totalCalories += calories;
+      totalSeconds += seconds;
+      
+      // 记录本次运动
+      const exerciseRecord = {
+        type: exerciseType.value,
+        duration: seconds,
+        calories: calories,
+        time: new Date().toISOString()
+      };
+      
+      exerciseHistory.push(exerciseRecord);
+      
+      // 保存到本地存储
+      localStorage.setItem('totalCalories', totalCalories);
+      localStorage.setItem('totalSeconds', totalSeconds);
+      localStorage.setItem('exerciseHistory', JSON.stringify(exerciseHistory));
+      
+      // 更新UI
+      updateExerciseStats();
+      exerciseHistoryEl.classList.remove('hidden');
+      renderExerciseHistory();
+      
+      // 重置当前运动
+      seconds = 0;
+      calories = 0;
+      timerDisplay.textContent = formatTime(seconds);
+      caloriesDisplay.textContent = `消耗热量: 0.0 大卡`;
+      
+      saveExercise.classList.add('hidden');
+      startExercise.classList.remove('hidden');
+      
+      // 显示提示
+      showToast('运动数据已保存！');
+    }
+    
+    // 渲染运动历史
+    function renderExerciseHistory() {
+      exerciseHistoryBody.innerHTML = '';
+      
+      // 按时间倒序显示
+      [...exerciseHistory].reverse().forEach(record => {
+        const row = document.createElement('tr');
+        row.className = 'border-b hover:bg-gray-50 transition-colors';
+        
+        const durationMinutes = Math.floor(record.duration / 60);
+        const durationSeconds = record.duration % 60;
+        const durationText = `${durationMinutes}分${durationSeconds}秒`;
+        
+        const date = new Date(record.time);
+        const timeText = date.toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+        
+        row.innerHTML = `
+          <td class="py-3 px-4">${record.type}</td>
+          <td class="py-3 px-4">${durationText}</td>
+          <td class="py-3 px-4">${record.calories.toFixed(1)} 大卡</td>
+          <td class="py-3 px-4">${timeText}</td>
+        `;
+        
+        exerciseHistoryBody.appendChild(row);
+      });
+    }
+    
+    // 加载运动数据
+    function loadExerciseData() {
+      const savedCalories = localStorage.getItem('totalCalories');
+      const savedSeconds = localStorage.getItem('totalSeconds');
+      const savedHistory = localStorage.getItem('exerciseHistory');
+      
+      if (savedCalories) totalCalories = parseFloat(savedCalories);
+      if (savedSeconds) totalSeconds = parseInt(savedSeconds);
+      if (savedHistory) exerciseHistory = JSON.parse(savedHistory);
+      
+      updateExerciseStats();
+      
+      // 如果有历史记录，渲染出来
+      if (exerciseHistory.length > 0) {
+        renderExerciseHistory();
+      }
+    }
+    
+    // 更新运动统计
+    function updateExerciseStats() {
+      // 更新总消耗热量
+      totalCaloriesEl.textContent = `${totalCalories.toFixed(1)} 大卡`;
+      
+      // 更新总运动时间
+      const totalMinutes = Math.floor(totalSeconds / 60);
+      if (totalMinutes >= 60) {
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        totalTimeEl.textContent = `${hours}小时${mins}分钟`;
+      } else {
+        totalTimeEl.textContent = `${totalMinutes} 分钟`;
+      }
+      
+      // 更新运动评估
+      if (totalMinutes < 30) {
+        exerciseEvaluation.textContent = '运动量偏少，建议增加运动时间，保持健康生活方式';
+      } else if (totalMinutes < 60) {
+        exerciseEvaluation.textContent = '运动量中等，继续保持，您的运动习惯很健康';
+      } else {
+        exerciseEvaluation.textContent = '运动量大，注意适当休息，避免过度疲劳';
+      }
+    }
+    
+    // 显示提示消息
+    function showToast(message) {
+      // 检查是否已有toast
+      let toast = document.querySelector('.toast-notification');
+      if (toast) {
+        toast.remove();
+      }
+      
+      // 创建新toast
+      toast = document.createElement('div');
+      toast.className = 'toast-notification fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-dark text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // 3秒后自动消失
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+    
+    // 获取医疗建议 - 会覆盖之前的结果
+    async function getMedicalAdvice() {
+      const symptom = document.getElementById('symptom-input').value.trim();
+      if (!symptom) {
+        showToast('请输入您的症状');
+        return;
+      }
+      
+      // 显示加载状态
+      checkSymptomBtn.disabled = true;
+      checkSymptomBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span>分析中...</span>';
+      
+      try {
+        // 使用DeepSeek API获取建议
+        const apiKey = 'sk-fa4414a3f7e141568f7e8b15a59414ef';
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+              {
+                role: "system",
+                content: "你是一位专业医生，请根据用户描述的症状，提供最多3种合适的药物建议，包括药物名字、每次吃的数量、次数，并分析可能的症状原因。请以JSON格式返回，结构为[{药物名字: string, 每次吃的数量: string, 次数: string, 症状原因: string}]"
+              },
+              {
+                role: "user",
+                content: `我的症状是：${symptom}`
+              }
+            ]
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API请求失败: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const medicalData = JSON.parse(data.choices[0].message.content);
+        
+        // 显示结果（会覆盖之前的结果）
+        const tableBody = document.getElementById('medical-table-body');
+        tableBody.innerHTML = ''; // 清空之前的结果
+        
+        medicalData.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = 'border-b hover:bg-gray-50 transition-colors';
+          
+          row.innerHTML = `
+            <td class="py-3 px-4">${item['药物名字']}</td>
+            <td class="py-3 px-4">${item['每次吃的数量']}</td>
+            <td class="py-3 px-4">${item['次数']}</td>
+            <td class="py-3 px-4">${item['症状原因']}</td>
+          `;
+          
+          tableBody.appendChild(row);
+        });
+        
+        // 更新时间戳
+        document.getElementById('medical-timestamp').textContent = `更新于 ${formatDateTime()}`;
+        
+        // 显示结果区域
+        document.getElementById('medical-result').classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('获取医疗建议失败:', error);
+        
+        // API调用失败时使用模拟数据
+        const mockData = [
+          {
+            药物名字: "布洛芬",
+            每次吃的数量: "1片",
+            次数: "每日3次",
+            症状原因: "可能是轻度炎症引起的疼痛"
+          },
+          {
+            药物名字: "维生素C",
+            每次吃的数量: "1片",
+            次数: "每日1次",
+            症状原因: "增强免疫力，帮助恢复"
+          }
+        ];
+        
+        const tableBody = document.getElementById('medical-table-body');
+        tableBody.innerHTML = '';
+        
+        mockData.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = 'border-b hover:bg-gray-50 transition-colors';
+          
+          row.innerHTML = `
+            <td class="py-3 px-4">${item['药物名字']}</td>
+            <td class="py-3 px-4">${item['每次吃的数量']}</td>
+            <td class="py-3 px-4">${item['次数']}</td>
+            <td class="py-3 px-4">${item['症状原因']}</td>
+          `;
+          
+          tableBody.appendChild(row);
+        });
+        
+        document.getElementById('medical-timestamp').textContent = `更新于 ${formatDateTime()}`;
+        document.getElementById('medical-result').classList.remove('hidden');
+        
+        showToast('获取建议失败，已显示参考建议');
+      } finally {
+        // 恢复按钮状态
+        checkSymptomBtn.disabled = false;
+        checkSymptomBtn.innerHTML = '<i class="fa fa-search"></i><span>查看建议</span>';
+      }
+    }
+    
+    // 获取饮食计划 - 会覆盖之前的结果
+    async function getDietPlan() {
+      const goal = document.getElementById('diet-goal').value;
+      const age = document.getElementById('age-input').value;
+      const allergy = document.querySelector('input[name="allergy"]:checked').value;
+      const allergyInfo = allergy === '是' ? document.getElementById('allergy-details').value : '';
+      
+      if (!goal || !age) {
+        showToast('请填写完整信息');
+        return;
+      }
+      
+      // 显示加载状态
+      generateDietBtn.disabled = true;
+      generateDietBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i><span>生成中...</span>';
+      
+      try {
+        // 使用DeepSeek API获取饮食计划
+        const apiKey = 'sk-fa4414a3f7e141568f7e8b15a59414ef';
+        const allergyText = allergy === '是' ? `有食物过敏，过敏原：${allergyInfo}` : '无食物过敏';
+        
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+              {
+                role: "system",
+                content: "你是一位营养师，请根据用户的需求提供每日饮食计划，包括早餐、午餐、晚餐的推荐食物和建议饭量。请以JSON格式返回，结构为[{时段: string, 推荐食物: string, 建议饭量: string}]"
+              },
+              {
+                role: "user",
+                content: `我${age}岁，饮食目的是${goal}，${allergyText}。请为我制定一天的饮食计划。`
+              }
+            ]
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API请求失败: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const dietData = JSON.parse(data.choices[0].message.content);
+        
+        // 显示结果（会覆盖之前的结果）
+        const tableBody = document.getElementById('diet-table-body');
+        tableBody.innerHTML = ''; // 清空之前的结果
+        
+        dietData.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = 'border-b hover:bg-gray-50 transition-colors';
+          
+          row.innerHTML = `
+            <td class="py-3 px-4">${item['时段']}</td>
+            <td class="py-3 px-4">${item['推荐食物']}</td>
+            <td class="py-3 px-4">${item['建议饭量']}</td>
+          `;
+          
+          tableBody.appendChild(row);
+        });
+        
+        // 更新时间戳
+        document.getElementById('diet-timestamp').textContent = `更新于 ${formatDateTime()}`;
+        
+        // 显示结果区域
+        document.getElementById('diet-result').classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('获取饮食计划失败:', error);
+        
+        // API调用失败时使用模拟数据
+        const mockData = [
+          {
+            时段: "早餐",
+            推荐食物: "全麦面包、鸡蛋、牛奶、苹果",
+            建议饭量: "适中"
+          },
+          {
+            时段: "午餐",
+            推荐食物: "米饭、瘦肉、绿叶蔬菜、豆腐",
+            建议饭量: goal === "减肥" ? "少量" : "适中"
+          },
+          {
+            时段: "晚餐",
+            推荐食物: "粥、蔬菜沙拉、蒸鱼",
+            建议饭量: goal === "变胖" ? "适量" : "少量"
+          }
+        ];
+        
+        const tableBody = document.getElementById('diet-table-body');
+        tableBody.innerHTML = '';
+        
+        mockData.forEach(item => {
+          const row = document.createElement('tr');
+          row.className = 'border-b hover:bg-gray-50 transition-colors';
+          
+          row.innerHTML = `
+            <td class="py-3 px-4">${item['时段']}</td>
+            <td class="py-3 px-4">${item['推荐食物']}</td>
+            <td class="py-3 px-4">${item['建议饭量']}</td>
+          `;
+          
+          tableBody.appendChild(row);
+        });
+        
+        document.getElementById('diet-timestamp').textContent = `更新于 ${formatDateTime()}`;
+        document.getElementById('diet-result').classList.remove('hidden');
+        
+        showToast('生成计划失败，已显示参考计划');
+      } finally {
+        // 恢复按钮状态
+        generateDietBtn.disabled = false;
+        generateDietBtn.innerHTML = '<i class="fa fa-cutlery"></i><span>生成饮食计划</span>';
+      }
+    }
+  </script>
+</body>
+</html>
